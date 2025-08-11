@@ -42,7 +42,10 @@ struct Config {
         .back = BTN_Y,
     },
     .sensitivity = {
-        .x = 2,
+        .x = 4,
         .y = 2
-    }
+    },
+    .wheel = 0,
+    .grab = false,
+    .sleep_time = 500
 };

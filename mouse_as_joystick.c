@@ -30,7 +30,7 @@ struct MouseEvents {
         int x;
         int y;
     } motion;
-} mouse_events;
+} mouse_events = {};
 
 void sigterm_handler()
 {
