@@ -75,10 +75,16 @@ int main(int argc, char **argv)
         if (rv < 0) printf("Failed: \"%s\"\n", strerror(-rv));
     }
 
-    if (!libevdev_has_event_type(dev, EV_REL) || !libevdev_has_event_code(dev, EV_KEY, BTN_LEFT)) {
+    bool exit_not_compat = false;
+    if (libevdev_has_event_type(dev, EV_REL) && libevdev_has_event_code(dev, EV_KEY, BTN_LEFT)) {
+    } else if (libevdev_has_event_type(dev, EV_ABS) && libevdev_has_event_code(dev, EV_KEY, BTN_LEFT)) {
         fprintf(stderr, "Specified device isn't a mouse\n");
-        exit(-1);
+        dev_is_abs = true;
+    } else {
+        fprintf(stderr, "Specified device isn't a touchpad either\n");
+        exit_not_compat = true;
     }
+    if (exit_not_compat) exit(-1);
 
     printf("Device name: %s\n", libevdev_get_name(dev));
     printf("Device location: %s\n", libevdev_get_phys(dev));
