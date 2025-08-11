@@ -101,14 +101,26 @@ int main(int argc, char **argv)
     if (config.mouse_buttons.back) libevdev_enable_event_code(vdev, EV_KEY, config.mouse_buttons.back, NULL);
     if (config.mouse_buttons.wheel) libevdev_enable_event_code(vdev, EV_KEY, config.mouse_buttons.wheel, NULL);
 
-    struct input_absinfo info = {
+    struct input_absinfo vinfo_wheel = {
         .minimum = -512,
         .maximum = 512
     };
+    struct input_absinfo vinfo_x = vinfo_wheel;
+    struct input_absinfo vinfo_y = vinfo_wheel;
+
+    if (dev_is_abs) {
+      struct input_absinfo info_y = *libevdev_get_abs_info(dev, ABS_Y);
+      struct input_absinfo info_x = *libevdev_get_abs_info(dev, ABS_X);
+      int x_orig = (info_x.maximum - info_x.minimum)/2, y_orig = (info_y.maximum - info_y.minimum)/2;
+
+      vinfo_x.minimum = -x_orig, vinfo_x.maximum = x_orig;
+      vinfo_y.minimum = -y_orig, vinfo_y.maximum = y_orig;
+    }
+
     libevdev_enable_event_type(vdev, EV_ABS);
-    libevdev_enable_event_code(vdev, EV_ABS, ABS_X, (void *)&info);
-    libevdev_enable_event_code(vdev, EV_ABS, ABS_Y, (void *)&info);
-    if (config.wheel) libevdev_enable_event_code(vdev, EV_ABS, config.wheel, (void *)&info);
+    libevdev_enable_event_code(vdev, EV_ABS, ABS_X, &vinfo_x);
+    libevdev_enable_event_code(vdev, EV_ABS, ABS_Y, &vinfo_y);
+    if (config.wheel) libevdev_enable_event_code(vdev, EV_ABS, config.wheel, &vinfo_wheel);
 
     rv = libevdev_uinput_create_from_device(vdev, LIBEVDEV_UINPUT_OPEN_MANAGED, &vuidev);
     if (rv != 0) return rv;
@@ -131,12 +143,12 @@ int main(int argc, char **argv)
         x += mouse_events.motion.x * config.sensitivity.x;
         y += mouse_events.motion.y * config.sensitivity.y;
         wheel += mouse_events.motion.wheel * config.sensitivity.wheel;
-        if (x <= info.minimum) x = info.minimum;
-        if (y <= info.minimum) y = info.minimum;
-        if (wheel <= info.minimum) wheel = info.minimum;
-        if (x >= info.maximum) x = info.maximum;
-        if (y >= info.maximum) y = info.maximum;
-        if (wheel >= info.maximum) wheel = info.maximum;
+        if (x <= vinfo_x.minimum) x = vinfo_x.minimum;
+        if (y <= vinfo_y.minimum) y = vinfo_y.minimum;
+        if (wheel <= vinfo_wheel.minimum) wheel = vinfo_wheel.minimum;
+        if (x >= vinfo_x.maximum) x = vinfo_x.maximum;
+        if (y >= vinfo_y.maximum) y = vinfo_y.maximum;
+        if (wheel >= vinfo_wheel.maximum) wheel = vinfo_wheel.maximum;
 
         // joystick motion
         libevdev_uinput_write_event(vuidev, EV_ABS, ABS_X, x);
