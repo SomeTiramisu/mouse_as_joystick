@@ -14,6 +14,7 @@
 #include "config.h"
 
 bool done = false;
+bool dev_is_abs = false;
 
 struct MouseEvents {
     struct Button {
@@ -31,6 +32,14 @@ struct MouseEvents {
         int y;
     } motion;
 } mouse_events = {};
+
+struct TouchCenter {
+    int x;
+    int y;
+} touch_center = {
+    .x = 0,
+    .y = 0
+};
 
 void sigterm_handler()
 {
