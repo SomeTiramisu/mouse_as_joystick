@@ -140,8 +140,16 @@ int main(int argc, char **argv)
         // reading input events from mouse
         handle_input(dev, input_events);
 
-        x += mouse_events.motion.x * config.sensitivity.x;
-        y += mouse_events.motion.y * config.sensitivity.y;
+	if (dev_is_abs) {
+	  x = 0;
+	  y = 0;
+	}
+
+	if(touch_center.x >= 0 && touch_center.y >= 0) {
+	  x += mouse_events.motion.x * config.sensitivity.x;
+	  y += mouse_events.motion.y * config.sensitivity.y;
+	}
+
         wheel += mouse_events.motion.wheel * config.sensitivity.wheel;
         if (x <= vinfo_x.minimum) x = vinfo_x.minimum;
         if (y <= vinfo_y.minimum) y = vinfo_y.minimum;
@@ -180,7 +188,8 @@ void handle_input(struct libevdev *dev, struct input_event *input_events)
     while ((rv = libevdev_next_event(dev, rv == LIBEVDEV_READ_STATUS_SYNC ? LIBEVDEV_READ_FLAG_SYNC : LIBEVDEV_READ_FLAG_NORMAL, &input_events[++size])) != -EAGAIN && rv == LIBEVDEV_READ_STATUS_SUCCESS)
         ;
 
-    memset(&mouse_events, 0, sizeof(mouse_events));
+    if (!dev_is_abs) memset(&mouse_events.motion, 0, sizeof(mouse_events.motion));
+    memset(&mouse_events.button, 0, sizeof(mouse_events.button));
     for (int i = 0; i < size; i++) {
         // mouse buttons
         if (input_events[i].type == EV_KEY && input_events[i].code == BTN_LEFT) mouse_events.button.left = true;
@@ -189,9 +198,28 @@ void handle_input(struct libevdev *dev, struct input_event *input_events)
         if (input_events[i].type == EV_KEY && input_events[i].code == BTN_SIDE) mouse_events.button.back = true;
         if (input_events[i].type == EV_KEY && input_events[i].code == BTN_MIDDLE) mouse_events.button.wheel = true;
 
+        if (input_events[i].type == EV_KEY && input_events[i].code == BTN_TOUCH && input_events[i].value == 0) {
+            touch_center.x = -1;
+            touch_center.y = -1;
+            memset(&mouse_events.motion, 0, sizeof(mouse_events.motion));
+        }
+
         // mouse movements
         if (input_events[i].type == EV_REL && input_events[i].code == REL_X) mouse_events.motion.x = input_events[i].value;
         if (input_events[i].type == EV_REL && input_events[i].code == REL_Y) mouse_events.motion.y = input_events[i].value;
+        if (input_events[i].type == EV_ABS && input_events[i].code == ABS_X) {
+            if (touch_center.x < 0) { // we just touched
+                touch_center.x = input_events[i].value;
+            }
+            mouse_events.motion.x = input_events[i].value - touch_center.x;
+          }
+          if (input_events[i].type == EV_ABS && input_events[i].code == ABS_Y) {
+              if (touch_center.y < 0) {
+                 touch_center.y = input_events[i].value;
+          }
+          mouse_events.motion.y = input_events[i].value - touch_center.y;
+          }
+
         if (input_events[i].type == EV_REL && input_events[i].code == REL_WHEEL) mouse_events.motion.wheel = input_events[i].value;
     }
 }
